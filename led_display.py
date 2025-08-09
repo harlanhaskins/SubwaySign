@@ -31,13 +31,13 @@ def format_subway_data(estimates):
     for estimate in estimates:
         line_name = estimate.line
         
-        # Add uptown time if available
+        # Add uptown time if available (↑ is chr(24) in CP437)
         if estimate.uptown is not None:
-            lines.append(f"U{line_name} {estimate.uptown}")
+            lines.append(f"↑{line_name}{estimate.uptown}")
         
-        # Add downtown time if available  
+        # Add downtown time if available (↓ is chr(25) in CP437)
         if estimate.downtown is not None:
-            lines.append(f"D{line_name} {estimate.downtown}")
+            lines.append(f"↓{line_name}{estimate.downtown}")
     
     return lines
 
@@ -60,7 +60,7 @@ def display_subway_times(device, lines):
             # Calculate width of the text we just drew to position next text
             # Estimate character width (SINCLAIR_FONT is about 4-5 pixels per char)
             text_width = len(line) * 4
-            x_pos += text_width + 1  # Add 1 pixel spacing
+            x_pos += text_width + 1  # Add 1 pixel spacing between entries
             
             # If we exceed the display width, break
             if x_pos >= 32:
