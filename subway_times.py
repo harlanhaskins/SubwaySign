@@ -93,18 +93,31 @@ class SubwayTimes:
         return max(0, minutes)
     
     def _get_next_arrival(self, trips, stop_id):
-        """Get the next arrival time for a specific stop"""
-        next_arrival = None
+        """Get the next realistic arrival time for a specific stop (skip trains < 2 minutes)"""
+        arrivals = []
         
         for trip in trips:
             for stop_update in trip.stop_time_updates:
                 if stop_update.stop_id == stop_id:
                     arrival_time = stop_update.arrival if stop_update.arrival else None
                     if arrival_time:
-                        if next_arrival is None or arrival_time < next_arrival:
-                            next_arrival = arrival_time
+                        minutes_away = self._calculate_minutes_away(arrival_time)
+                        if minutes_away is not None:
+                            arrivals.append((arrival_time, minutes_away))
         
-        return next_arrival
+        # Sort by arrival time
+        arrivals.sort(key=lambda x: x[0])
+        
+        # Find first train that's >= 2 minutes away
+        for arrival_time, minutes_away in arrivals:
+            if minutes_away >= 2:
+                return arrival_time
+        
+        # If no trains >= 2 minutes, return the next one anyway
+        if arrivals:
+            return arrivals[0][0]
+        
+        return None
 
 def main():
     parser = argparse.ArgumentParser(description='Get next subway times from 23rd Street')
