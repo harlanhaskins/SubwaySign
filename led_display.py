@@ -137,6 +137,11 @@ def main():
             last_data_refresh = 0
             estimates = []
             
+            # Get initial data
+            estimates = subway.get_times(args.lines)
+            last_data_refresh = time.time()
+            print(f"Initial data loaded - {len(estimates)} lines")
+            
             while True:
                 try:
                     current_time = time.time()
