@@ -64,8 +64,21 @@ def display_estimate(device, estimate):
             text(draw, (0, 0), "No data", fill="white", font=proportional(TINY_FONT))
             return
         
-        # Skip if no data for either direction
-        if not estimate.uptown and not estimate.downtown:
+        # Helper function to get next useful train (≥2 minutes away)
+        def get_next_train(times_list):
+            if not times_list:
+                return None
+            # Find first train that's at least 2 minutes away
+            for time in times_list:
+                if time >= 2:
+                    return time
+            # If no trains ≥2 minutes, show the closest one
+            return times_list[0] if times_list else None
+        
+        # Skip if no useful data for either direction
+        next_uptown = get_next_train(estimate.uptown)
+        next_downtown = get_next_train(estimate.downtown)
+        if next_uptown is None and next_downtown is None:
             return
         
         # Display format: [LINE] [↑] [UP-TIMES] [↓] [DOWN-TIMES] (skip missing directions)
@@ -79,25 +92,25 @@ def display_estimate(device, estimate):
         x_pos += text_width + 1  # Add 1 pixel spacing
         
         # Draw uptown if available
-        if estimate.uptown:
+        if next_uptown is not None:
             # Draw up arrow
             draw_up_arrow(draw, x_pos, 0)
             x_pos += 4  # Arrow width + 1 pixel spacing
             
-            # Draw uptown times (comma separated)
-            uptown_text = ','.join(map(str, estimate.uptown[:3]))  # Max 3 times
+            # Draw next uptown time
+            uptown_text = str(next_uptown)
             text(draw, (x_pos, 0), uptown_text, fill="white", font=proportional(TINY_FONT))
             text_width = len(uptown_text) * 3  # TINY_FONT is ~3 pixels per char
             x_pos += text_width + 2  # Add 2 pixels spacing
         
         # Draw downtown if available
-        if estimate.downtown:
+        if next_downtown is not None:
             # Draw down arrow
             draw_down_arrow(draw, x_pos, 0)
             x_pos += 4  # Arrow width + 1 pixel spacing
             
-            # Draw downtown times (comma separated)
-            downtown_text = ','.join(map(str, estimate.downtown[:3]))  # Max 3 times
+            # Draw next downtown time
+            downtown_text = str(next_downtown)
             text(draw, (x_pos, 0), downtown_text, fill="white", font=proportional(TINY_FONT))
             text_width = len(downtown_text) * 3  # TINY_FONT is ~3 pixels per char
             x_pos += text_width + 2  # Add 2 pixels spacing
@@ -162,9 +175,19 @@ def main():
                             current_estimate = valid_estimates[current_page % len(valid_estimates)]
                             display_estimate(device, current_estimate)
                             
-                            # Show which page we're on
-                            uptown_text = ','.join(map(str, current_estimate.uptown[:3])) if current_estimate.uptown else "N/A"
-                            downtown_text = ','.join(map(str, current_estimate.downtown[:3])) if current_estimate.downtown else "N/A"
+                            # Show which page we're on with next useful trains
+                            def get_next_train_for_display(times_list):
+                                if not times_list:
+                                    return "N/A"
+                                # Find first train that's at least 2 minutes away
+                                for time in times_list:
+                                    if time >= 2:
+                                        return str(time)
+                                # If no trains ≥2 minutes, show the closest one
+                                return str(times_list[0])
+                            
+                            uptown_text = get_next_train_for_display(current_estimate.uptown)
+                            downtown_text = get_next_train_for_display(current_estimate.downtown)
                             print(f"Page {current_page + 1}/{len(valid_estimates)}: {current_estimate.line} U{uptown_text} D{downtown_text}")
                             
                             # Move to next page

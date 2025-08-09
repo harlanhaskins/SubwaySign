@@ -191,8 +191,8 @@ class MTAApi:
                     
                     return deduplicated[:3]  # Take first 3 useful trains
                 
-                uptown_filtered = filter_useful_times(uptown)[:3]
-                downtown_filtered = filter_useful_times(downtown)[:3]
+                uptown_filtered = filter_useful_times(uptown)
+                downtown_filtered = filter_useful_times(downtown)
                 
                 estimates.append(MTATrainEstimate(line, uptown_filtered, downtown_filtered))
             else:
