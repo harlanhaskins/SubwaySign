@@ -1,0 +1,22 @@
+[Unit]
+Description=Subway Sign LED Display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=harlan
+Group=harlan
+WorkingDirectory=/home/harlan/SubwaySign
+Environment=PATH=/home/harlan/SubwaySign/venv/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/harlan/SubwaySign/venv/bin/python3 /home/harlan/SubwaySign/led_display.py F M R W 1 C E 6
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Allow GPIO access
+SupplementaryGroups=gpio spi
+
+[Install]
+WantedBy=multi-user.target

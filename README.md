@@ -26,14 +26,36 @@ Real-time NYC subway arrival times on an LED matrix display for your apartment. 
    python3 led_display.py F M R W 1 C E 6
    ```
 
+## Systemd Service (Raspberry Pi)
+
+To run automatically at boot:
+
+1. **Install as service:**
+   ```bash
+   ./install-service.sh
+   ```
+
+2. **Service management:**
+   ```bash
+   sudo systemctl status subway-sign    # Check status
+   sudo systemctl stop subway-sign      # Stop service
+   sudo systemctl start subway-sign     # Start service  
+   sudo systemctl restart subway-sign   # Restart service
+   sudo journalctl -u subway-sign -f    # View logs
+   ```
+
 ## Features
 
 - **Station-specific data** - Only shows trains actually stopping at 23rd Street
 - **Real-time accuracy** - Uses MTA's internal API with proper trip deduplication
-- **Smart filtering** - Removes trains already at station and duplicate times
+- **Smart filtering** - Shows only next useful train (≥2 minutes away)
 - **Multiple train lines** - Supports F, M, R, W, 1, C, E, and 6 trains
 - **LED matrix display** - Cycles through train lines with custom arrows
 - **Direction aware** - Only shows directions that actually have service
+- **Error handling** - Loading spinner and error messages for network issues
+- **Sleep schedule** - Automatically sleeps at noon, wakes at 6am (configurable)
+- **Systemd service** - Auto-start at boot with proper service management
+- **Robust operation** - Graceful error recovery and cached data fallback
 
 ## Hardware
 

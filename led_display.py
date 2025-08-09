@@ -7,6 +7,7 @@ Displays subway arrival times on MAX7219 LED matrix via SPI
 import argparse
 import sys
 import time
+from datetime import datetime, time as dt_time
 from luma.led_matrix.device import max7219
 from luma.core.interface.serial import spi, noop
 from luma.core.render import canvas
@@ -56,6 +57,36 @@ def draw_down_arrow(draw, x, y):
     # Arrow tip
     draw.point((x+1, y+5), fill="white")
 
+
+def display_loading(device, spinner_frame=0):
+    """Display loading spinner"""
+    spinner_chars = ["|", "/", "-", "\\"]
+    with canvas(device) as draw:
+        spinner_char = spinner_chars[spinner_frame % len(spinner_chars)]
+        text(draw, (0, 0), f"Loading {spinner_char}", fill="white", font=proportional(TINY_FONT))
+
+def display_error(device, error_msg="API Error"):
+    """Display error message"""
+    with canvas(device) as draw:
+        text(draw, (0, 0), error_msg, fill="white", font=proportional(TINY_FONT))
+
+def display_sleep(device):
+    """Display sleep message"""
+    with canvas(device) as draw:
+        text(draw, (0, 0), "Sleeping", fill="white", font=proportional(TINY_FONT))
+
+def is_sleep_time(sleep_start_hour=12, wake_hour=6):
+    """Check if current time is during sleep period"""
+    now = datetime.now()
+    current_hour = now.hour
+    
+    # Sleep from sleep_start_hour (12) until wake_hour (6)
+    if sleep_start_hour < wake_hour:
+        # Normal case: sleep 12-18 (6pm)
+        return sleep_start_hour <= current_hour < wake_hour
+    else:
+        # Overnight case: sleep 12 (noon) until 6am next day
+        return current_hour >= sleep_start_hour or current_hour < wake_hour
 
 def display_estimate(device, estimate):
     """Display a single subway line estimate on LED matrix"""
@@ -125,6 +156,12 @@ def main():
                        help='Time to show each page in seconds (default: 5)')
     parser.add_argument('--once', action='store_true', 
                        help='Run once and exit (no continuous refresh)')
+    parser.add_argument('--sleep-start', type=int, default=12,
+                       help='Hour to start sleeping (24-hour format, default: 12 for noon)')
+    parser.add_argument('--wake-hour', type=int, default=6,
+                       help='Hour to wake up (24-hour format, default: 6 for 6am)')
+    parser.add_argument('--no-sleep', action='store_true',
+                       help='Disable sleep schedule (run 24/7)')
     args = parser.parse_args()
 
     try:
@@ -150,34 +187,57 @@ def main():
             last_data_refresh = 0
             estimates = []
             
-            # Get initial data
-            estimates = mta.get_times(args.lines)
-            last_data_refresh = time.time()
-            print(f"Initial data loaded - {len(estimates)} lines")
+            # Get initial data with error handling
+            estimates = []
+            spinner_frame = 0
+            api_error = False
+            last_data_refresh = 0
             
             while True:
                 try:
                     current_time = time.time()
                     
-                    # Refresh data if needed
-                    if current_time - last_data_refresh >= args.refresh:
-                        # Remember what line we were showing before refresh
-                        current_line = None
-                        if estimates:
-                            valid_estimates_before = [est for est in estimates if est.uptown or est.downtown]
-                            if valid_estimates_before and current_page < len(valid_estimates_before):
-                                current_line = valid_estimates_before[current_page].line
+                    # Check if we should sleep
+                    if not args.no_sleep and is_sleep_time(args.sleep_start, args.wake_hour):
+                        display_sleep(device)
+                        time.sleep(60)  # Check every minute during sleep
+                        continue
+                    
+                    # Refresh data if needed or if we don't have data yet
+                    if current_time - last_data_refresh >= args.refresh or not estimates:
+                        # Show loading spinner during data fetch
+                        if not estimates:
+                            display_loading(device, spinner_frame)
+                            spinner_frame += 1
                         
-                        estimates = mta.get_times(args.lines)
-                        last_data_refresh = current_time
-                        
-                        # Try to find the same line in the new data
-                        if current_line:
-                            valid_estimates_after = [est for est in estimates if est.uptown or est.downtown]
-                            for i, est in enumerate(valid_estimates_after):
-                                if est.line == current_line:
-                                    current_page = i
-                                    break
+                        try:
+                            # Remember what line we were showing before refresh
+                            current_line = None
+                            if estimates:
+                                valid_estimates_before = [est for est in estimates if est.uptown or est.downtown]
+                                if valid_estimates_before and current_page < len(valid_estimates_before):
+                                    current_line = valid_estimates_before[current_page].line
+                            
+                            new_estimates = mta.get_times(args.lines)
+                            estimates = new_estimates
+                            last_data_refresh = current_time
+                            api_error = False  # Clear error flag on success
+                            
+                            # Try to find the same line in the new data
+                            if current_line:
+                                valid_estimates_after = [est for est in estimates if est.uptown or est.downtown]
+                                for i, est in enumerate(valid_estimates_after):
+                                    if est.line == current_line:
+                                        current_page = i
+                                        break
+                                        
+                        except Exception as e:
+                            # Handle API errors
+                            api_error = True
+                            if not estimates:  # Only show error if we have no cached data
+                                display_error(device, "API Error")
+                                time.sleep(5)  # Wait before retry
+                                continue
                     
                     if estimates:
                         # Filter out estimates with no data
@@ -210,9 +270,12 @@ def main():
                             current_page = (current_page + 1) % len(valid_estimates)
                         else:
                             # No valid data for any line
-                            with canvas(device) as draw:
-                                text(draw, (0, 0), "No trains", fill="white", font=proportional(TINY_FONT))
-                            print("No valid train data available")
+                            display_error(device, "No trains")
+                    else:
+                        # Still loading initial data, keep showing spinner
+                        if not api_error:
+                            display_loading(device, spinner_frame)
+                            spinner_frame += 1
                     
                     time.sleep(args.page_time)
                     
