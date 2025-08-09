@@ -1,0 +1,2 @@
+nyct-gtfs>=2.0.0
+git+https://github.com/rm-hull/max7219.git
