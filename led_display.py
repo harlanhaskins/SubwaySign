@@ -161,16 +161,32 @@ def main():
                     
                     # Refresh data if needed
                     if current_time - last_data_refresh >= args.refresh:
+                        # Remember what line we were showing before refresh
+                        current_line = None
+                        if estimates:
+                            valid_estimates_before = [est for est in estimates if est.uptown or est.downtown]
+                            if valid_estimates_before and current_page < len(valid_estimates_before):
+                                current_line = valid_estimates_before[current_page].line
+                        
                         estimates = mta.get_times(args.lines)
                         last_data_refresh = current_time
-                        current_page = 0  # Reset to first page on data refresh
-                        print(f"Data refreshed - {len(estimates)} lines")
+                        
+                        # Try to find the same line in the new data
+                        if current_line:
+                            valid_estimates_after = [est for est in estimates if est.uptown or est.downtown]
+                            for i, est in enumerate(valid_estimates_after):
+                                if est.line == current_line:
+                                    current_page = i
+                                    break
                     
                     if estimates:
                         # Filter out estimates with no data
                         valid_estimates = [est for est in estimates if est.uptown or est.downtown]
                         
                         if valid_estimates:
+                            # Ensure current_page is within bounds after data refresh
+                            if current_page >= len(valid_estimates):
+                                current_page = 0
                             # Display current valid estimate
                             current_estimate = valid_estimates[current_page % len(valid_estimates)]
                             display_estimate(device, current_estimate)
