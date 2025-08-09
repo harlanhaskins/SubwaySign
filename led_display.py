@@ -46,7 +46,7 @@ def display_subway_times(device, lines):
     """Display formatted subway times on LED matrix"""
     with canvas(device) as draw:
         if not lines:
-            text(draw, (0, 0), "No data", fill="white", font=proportional(CP437_FONT))
+            text(draw, (0, 0), "No data", fill="white", font=proportional(SINCLAIR_FONT))
             return
         
         # Manually draw each line on the display
@@ -55,11 +55,11 @@ def display_subway_times(device, lines):
         
         for i, line in enumerate(lines):
             # Draw the text at current x position
-            text(draw, (x_pos, 0), line, fill="white", font=proportional(CP437_FONT))
+            text(draw, (x_pos, 0), line, fill="white", font=proportional(SINCLAIR_FONT))
             
             # Calculate width of the text we just drew to position next text
-            # Estimate character width (CP437_FONT is about 5-6 pixels per char)
-            text_width = len(line) * 5
+            # Estimate character width (SINCLAIR_FONT is about 4-5 pixels per char)
+            text_width = len(line) * 4
             x_pos += text_width + 1  # Add 1 pixel spacing
             
             # If we exceed the display width, break
