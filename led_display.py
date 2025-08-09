@@ -14,7 +14,7 @@ from luma.core.virtual import viewport
 from luma.core.legacy import text, show_message
 from luma.core.legacy.font import proportional, CP437_FONT, TINY_FONT, SINCLAIR_FONT, LCD_FONT
 
-from subway_times import SubwayTimes
+from mta_api import MTAApi
 
 
 def create_device():
@@ -65,10 +65,10 @@ def display_estimate(device, estimate):
             return
         
         # Skip if no data for either direction
-        if estimate.uptown is None and estimate.downtown is None:
+        if not estimate.uptown and not estimate.downtown:
             return
         
-        # Display format: [LINE] [↑] [UP-TIME] [↓] [DOWN-TIME] (skip missing directions)
+        # Display format: [LINE] [↑] [UP-TIMES] [↓] [DOWN-TIMES] (skip missing directions)
         # With 4 matrices (32x8), we have 32 pixels width, 8 pixels height
         x_pos = 1  # Start with 1px padding
         
@@ -79,25 +79,25 @@ def display_estimate(device, estimate):
         x_pos += text_width + 1  # Add 1 pixel spacing
         
         # Draw uptown if available
-        if estimate.uptown is not None:
+        if estimate.uptown:
             # Draw up arrow
             draw_up_arrow(draw, x_pos, 0)
             x_pos += 4  # Arrow width + 1 pixel spacing
             
-            # Draw uptown time
-            uptown_text = str(estimate.uptown)
+            # Draw uptown times (comma separated)
+            uptown_text = ','.join(map(str, estimate.uptown[:3]))  # Max 3 times
             text(draw, (x_pos, 0), uptown_text, fill="white", font=proportional(TINY_FONT))
             text_width = len(uptown_text) * 3  # TINY_FONT is ~3 pixels per char
             x_pos += text_width + 2  # Add 2 pixels spacing
         
         # Draw downtown if available
-        if estimate.downtown is not None:
+        if estimate.downtown:
             # Draw down arrow
             draw_down_arrow(draw, x_pos, 0)
             x_pos += 4  # Arrow width + 1 pixel spacing
             
-            # Draw downtown time
-            downtown_text = str(estimate.downtown)
+            # Draw downtown times (comma separated)
+            downtown_text = ','.join(map(str, estimate.downtown[:3]))  # Max 3 times
             text(draw, (x_pos, 0), downtown_text, fill="white", font=proportional(TINY_FONT))
             text_width = len(downtown_text) * 3  # TINY_FONT is ~3 pixels per char
             x_pos += text_width + 2  # Add 2 pixels spacing
@@ -118,12 +118,12 @@ def main():
         # Initialize LED matrix
         device = create_device()
         
-        # Initialize subway data fetcher
-        subway = SubwayTimes()
+        # Initialize MTA API client
+        mta = MTAApi()
         
         if args.once:
             # Run once and exit
-            estimates = subway.get_times(args.lines)
+            estimates = mta.get_times(args.lines)
             if estimates:
                 display_estimate(device, estimates[0])
         else:
@@ -138,7 +138,7 @@ def main():
             estimates = []
             
             # Get initial data
-            estimates = subway.get_times(args.lines)
+            estimates = mta.get_times(args.lines)
             last_data_refresh = time.time()
             print(f"Initial data loaded - {len(estimates)} lines")
             
@@ -148,14 +148,14 @@ def main():
                     
                     # Refresh data if needed
                     if current_time - last_data_refresh >= args.refresh:
-                        estimates = subway.get_times(args.lines)
+                        estimates = mta.get_times(args.lines)
                         last_data_refresh = current_time
                         current_page = 0  # Reset to first page on data refresh
                         print(f"Data refreshed - {len(estimates)} lines")
                     
                     if estimates:
                         # Filter out estimates with no data
-                        valid_estimates = [est for est in estimates if est.uptown is not None or est.downtown is not None]
+                        valid_estimates = [est for est in estimates if est.uptown or est.downtown]
                         
                         if valid_estimates:
                             # Display current valid estimate
@@ -163,8 +163,8 @@ def main():
                             display_estimate(device, current_estimate)
                             
                             # Show which page we're on
-                            uptown_text = str(current_estimate.uptown) if current_estimate.uptown is not None else "N/A"
-                            downtown_text = str(current_estimate.downtown) if current_estimate.downtown is not None else "N/A"
+                            uptown_text = ','.join(map(str, current_estimate.uptown[:3])) if current_estimate.uptown else "N/A"
+                            downtown_text = ','.join(map(str, current_estimate.downtown[:3])) if current_estimate.downtown else "N/A"
                             print(f"Page {current_page + 1}/{len(valid_estimates)}: {current_estimate.line} U{uptown_text} D{downtown_text}")
                             
                             # Move to next page
