@@ -70,12 +70,13 @@ def display_estimate(device, estimate):
         
         # Display format: [LINE] [↑] [UP-TIME] [↓] [DOWN-TIME] (skip missing directions)
         # With 4 matrices (32x8), we have 32 pixels width, 8 pixels height
-        x_pos = 0
+        x_pos = 1  # Start with 1px padding
         
-        # Draw line name
-        text(draw, (x_pos, 0), estimate.line, fill="white", font=proportional(TINY_FONT))
-        text_width = len(estimate.line) * 3  # TINY_FONT is ~3 pixels per char
-        x_pos += text_width + 2  # Add 2 pixels spacing
+        # Draw line name with colon
+        line_text = f"{estimate.line}:"
+        text(draw, (x_pos, 0), line_text, fill="white", font=proportional(TINY_FONT))
+        text_width = len(line_text) * 3  # TINY_FONT is ~3 pixels per char
+        x_pos += text_width + 1  # Add 1 pixel spacing
         
         # Draw uptown if available
         if estimate.uptown is not None:
