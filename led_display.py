@@ -64,7 +64,11 @@ def display_estimate(device, estimate):
             text(draw, (0, 0), "No data", fill="white", font=proportional(TINY_FONT))
             return
         
-        # Display format: [LINE] [↑] [UP-TIME] [↓] [DOWN-TIME]
+        # Skip if no data for either direction
+        if estimate.uptown is None and estimate.downtown is None:
+            return
+        
+        # Display format: [LINE] [↑] [UP-TIME] [↓] [DOWN-TIME] (skip missing directions)
         # With 4 matrices (32x8), we have 32 pixels width, 8 pixels height
         x_pos = 0
         
@@ -73,25 +77,29 @@ def display_estimate(device, estimate):
         text_width = len(estimate.line) * 3  # TINY_FONT is ~3 pixels per char
         x_pos += text_width + 2  # Add 2 pixels spacing
         
-        # Draw up arrow
-        draw_up_arrow(draw, x_pos, 0)
-        x_pos += 4  # Arrow width + 1 pixel spacing
+        # Draw uptown if available
+        if estimate.uptown is not None:
+            # Draw up arrow
+            draw_up_arrow(draw, x_pos, 0)
+            x_pos += 4  # Arrow width + 1 pixel spacing
+            
+            # Draw uptown time
+            uptown_text = str(estimate.uptown)
+            text(draw, (x_pos, 0), uptown_text, fill="white", font=proportional(TINY_FONT))
+            text_width = len(uptown_text) * 3  # TINY_FONT is ~3 pixels per char
+            x_pos += text_width + 2  # Add 2 pixels spacing
         
-        # Draw uptown time
-        uptown_text = str(estimate.uptown) if estimate.uptown is not None else "--"
-        text(draw, (x_pos, 0), uptown_text, fill="white", font=proportional(TINY_FONT))
-        text_width = len(uptown_text) * 3  # TINY_FONT is ~3 pixels per char
-        x_pos += text_width + 2  # Add 2 pixels spacing
-        
-        # Draw down arrow
-        draw_down_arrow(draw, x_pos, 0)
-        x_pos += 4  # Arrow width + 1 pixel spacing
-        
-        # Draw downtown time
-        downtown_text = str(estimate.downtown) if estimate.downtown is not None else "--"
-        text(draw, (x_pos, 0), downtown_text, fill="white", font=proportional(TINY_FONT))
-        text_width = len(downtown_text) * 3  # TINY_FONT is ~3 pixels per char
-        x_pos += text_width + 2  # Add 2 pixels spacing
+        # Draw downtown if available
+        if estimate.downtown is not None:
+            # Draw down arrow
+            draw_down_arrow(draw, x_pos, 0)
+            x_pos += 4  # Arrow width + 1 pixel spacing
+            
+            # Draw downtown time
+            downtown_text = str(estimate.downtown)
+            text(draw, (x_pos, 0), downtown_text, fill="white", font=proportional(TINY_FONT))
+            text_width = len(downtown_text) * 3  # TINY_FONT is ~3 pixels per char
+            x_pos += text_width + 2  # Add 2 pixels spacing
 
 
 def main():
@@ -140,17 +148,26 @@ def main():
                         print(f"Data refreshed - {len(estimates)} lines")
                     
                     if estimates:
-                        # Display current estimate
-                        current_estimate = estimates[current_page % len(estimates)]
-                        display_estimate(device, current_estimate)
+                        # Filter out estimates with no data
+                        valid_estimates = [est for est in estimates if est.uptown is not None or est.downtown is not None]
                         
-                        # Show which page we're on
-                        uptown_text = str(current_estimate.uptown) if current_estimate.uptown is not None else "--"
-                        downtown_text = str(current_estimate.downtown) if current_estimate.downtown is not None else "--"
-                        print(f"Page {current_page + 1}/{len(estimates)}: {current_estimate.line} U{uptown_text} D{downtown_text}")
-                        
-                        # Move to next page
-                        current_page = (current_page + 1) % len(estimates)
+                        if valid_estimates:
+                            # Display current valid estimate
+                            current_estimate = valid_estimates[current_page % len(valid_estimates)]
+                            display_estimate(device, current_estimate)
+                            
+                            # Show which page we're on
+                            uptown_text = str(current_estimate.uptown) if current_estimate.uptown is not None else "N/A"
+                            downtown_text = str(current_estimate.downtown) if current_estimate.downtown is not None else "N/A"
+                            print(f"Page {current_page + 1}/{len(valid_estimates)}: {current_estimate.line} U{uptown_text} D{downtown_text}")
+                            
+                            # Move to next page
+                            current_page = (current_page + 1) % len(valid_estimates)
+                        else:
+                            # No valid data for any line
+                            with canvas(device) as draw:
+                                text(draw, (0, 0), "No trains", fill="white", font=proportional(TINY_FONT))
+                            print("No valid train data available")
                     
                     time.sleep(args.page_time)
                     
