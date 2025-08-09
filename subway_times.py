@@ -87,6 +87,7 @@ class SubwayTimes:
         if not arrival_time:
             return None
         
+        # Both times should be timezone-unaware and in local NY time
         now = datetime.now()
         diff = arrival_time - now
         minutes = int(diff.total_seconds() / 60)
@@ -105,15 +106,15 @@ class SubwayTimes:
                         if minutes_away is not None:
                             arrivals.append((arrival_time, minutes_away))
         
-        # Sort by arrival time
-        arrivals.sort(key=lambda x: x[0])
+        # Sort by minutes away (ascending)
+        arrivals.sort(key=lambda x: x[1])
         
         # Find first train that's >= 2 minutes away
         for arrival_time, minutes_away in arrivals:
             if minutes_away >= 2:
                 return arrival_time
         
-        # If no trains >= 2 minutes, return the next one anyway
+        # If no trains >= 2 minutes, return the closest one
         if arrivals:
             return arrivals[0][0]
         
