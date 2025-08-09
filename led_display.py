@@ -44,16 +44,27 @@ def format_subway_data(estimates):
 
 def display_subway_times(device, lines):
     """Display formatted subway times on LED matrix"""
-    if not lines:
-        with canvas(device) as draw:
-            text(draw, (0, 0), "No data", fill="white", font=proportional(TINY_FONT))
-        return
-    
-    # Create scrolling text with all lines
-    message = " | ".join(lines)
-    
-    # Show scrolling message
-    show_message(device, message, fill="white", font=proportional(TINY_FONT), scroll_delay=0.1)
+    with canvas(device) as draw:
+        if not lines:
+            text(draw, (0, 0), "No data", fill="white", font=proportional(CP437_FONT))
+            return
+        
+        # Manually draw each line on the display
+        # With 4 matrices (32x8), we have 32 pixels width, 8 pixels height
+        x_pos = 0
+        
+        for i, line in enumerate(lines):
+            # Draw the text at current x position
+            text(draw, (x_pos, 0), line, fill="white", font=proportional(CP437_FONT))
+            
+            # Calculate width of the text we just drew to position next text
+            # Estimate character width (CP437_FONT is about 5-6 pixels per char)
+            text_width = len(line) * 5
+            x_pos += text_width + 1  # Add 1 pixel spacing
+            
+            # If we exceed the display width, break
+            if x_pos >= 32:
+                break
 
 
 def main():
